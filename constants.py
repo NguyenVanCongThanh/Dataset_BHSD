@@ -1,0 +1,5 @@
+DATASET_DIR = "/mnt/d/computed-tomography-images-for-intracranial-hemorrhage-detection-and-segmentation-1.3.1/computed-tomography-images-for-intracranial-hemorrhage-detection-and-segmentation-1.3.1"
+HEADER_PATH = "/home/thanh/Dataset/headers.csv"
+CT_SCANS_FODLER = "ct_scans"
+MASKS_FOLDER = "masks"
+LABEL_FILE_NAME = "hemorrhage_diagnosis_raw_ct.csv"

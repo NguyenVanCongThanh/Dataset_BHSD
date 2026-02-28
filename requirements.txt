@@ -1,0 +1,20 @@
+# Core
+numpy>=1.26
+pandas>=2.2
+
+# Visualization
+matplotlib>=3.8
+seaborn>=0.13
+
+# Medical Imaging
+pydicom>=2.4
+opencv-python>=4.9
+nibabel>=5.2.1
+scipy>=1.11.4
+
+# Jupyter
+notebook>=7.0
+ipykernel>=6.29
+
+# YAML support (for ct_ich.yml)
+pyyaml>=6.0
