@@ -2,7 +2,7 @@ import os
 import nibabel as nib
 import pandas as pd
 import numpy as np
-from constants import DATASET_DIR
+from src.config import DATASET_DIR
 
 # ====== Đường dẫn folder chứa file nii ======
 folder_path = os.path.join(DATASET_DIR, 'ct_scans')

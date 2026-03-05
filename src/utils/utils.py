@@ -7,7 +7,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 import os
-from constants import DATASET_DIR, CT_SCANS_FODLER, MASKS_FOLDER, LABEL_FILE_NAME
+from src.config import DATASET_DIR, CT_SCANS_FODLER, MASKS_FOLDER, LABEL_FILE_NAME
 from nibabel.processing import resample_to_output
 
 def get_file_path(file_id, dataset_dir=DATASET_DIR, subfolder=CT_SCANS_FODLER):
