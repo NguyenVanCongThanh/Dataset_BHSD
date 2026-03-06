@@ -180,217 +180,219 @@ def load_label_volume(filename):
 # VISUALIZATION FUNCTIONS
 # ==============================
 
-def show_mid_slices(
-    filename,
-    window=None,
-    overlay=False,
-    alpha=0.4,
-    base_dir=IMAGE_DIR
-):
+# def show_mid_slices(
+#     filename,
+#     window=None,
+#     overlay=False,
+#     alpha=0.4,
+#     base_dir=IMAGE_DIR
+# ):
 
-    file_path, volume, voxel_spacing = load_ct_volume(filename, base_dir)
+#     file_path, volume, voxel_spacing = load_ct_volume(filename, base_dir)
 
-    label_volume = None
-    label_slices = None
-    volume_labels = set()
+#     label_volume = None
+#     label_slices = None
+#     volume_labels = set()
 
-    if overlay:
-        label_volume = load_label_volume(filename)
+#     if overlay:
+#         label_volume = load_label_volume(filename)
 
-        if label_volume is not None:
-            label_slices = get_mid_slices(label_volume)
-            volume_labels = get_volume_labels(label_volume)
+#         if label_volume is not None:
+#             label_slices = get_mid_slices(label_volume)
+#             volume_labels = get_volume_labels(label_volume)
 
-    vmin, vmax, window_str = calculate_window_range(window)
-
-    ct_slices = get_mid_slices(volume)
-
-    aspects = calculate_aspect_ratios(voxel_spacing)
-
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-    for ax, view in zip(axes, ct_slices):
-
-        label_slice = None
-        slice_labels = set()
-
-        if label_slices:
-            label_slice = label_slices.get(view)
-            slice_labels = get_slice_labels(label_slice)
-
-        draw_slice(
-            ax,
-            ct_slices[view],
-            label_slice,
-            aspect_ratio=aspects[view],
-            vmin=vmin,
-            vmax=vmax,
-            alpha=alpha
-        )
-
-        label_str = f"\n{sorted(slice_labels)}" if slice_labels else ""
-        ax.set_title(f"{view}{label_str}")
-
-    shape_str = f"Shape: {volume.shape}"
-
-    voxel_str = (
-        f"Voxel spacing: "
-        f"{voxel_spacing[0]:.3f} x "
-        f"{voxel_spacing[1]:.3f} x "
-        f"{voxel_spacing[2]:.3f} mm"
-    )
-
-    volume_label_str = f"Labels: {sorted(volume_labels)}" if volume_labels else ""
-
-    fig.suptitle(
-        f"{os.path.basename(file_path)}\n"
-        f"{shape_str}\n"
-        f"{voxel_str}\n"
-        f"{window_str}\n"
-        f"{volume_label_str}",
-        fontsize=11
-    )
-
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.83)
-    plt.show()
-
-
-def show_all_slices(
-    filename,
-    window=None,
-    overlay=False,
-    alpha=0.4,
-    cols=5,
-    figsize_scale=2.5
-):
-
-    file_path, volume, voxel_spacing = load_ct_volume(filename)
-
-    label_volume = load_label_volume(filename) if overlay else None
-
-    volume_labels = set()
-    if label_volume is not None:
-        volume_labels = get_volume_labels(label_volume)
-
-    vmin, vmax, window_str = calculate_window_range(window)
-
-    n_slices = volume.shape[2]
-
-    rows = int(np.ceil(n_slices / cols))
-
-    aspect_ratio = voxel_spacing[1] / voxel_spacing[0]
-
-    fig, axes = plt.subplots(
-        rows,
-        cols,
-        figsize=(cols * figsize_scale, rows * figsize_scale)
-    )
-
-    axes = np.array(axes).reshape(-1)
-
-    for i, ax in enumerate(axes):
-
-        if i < n_slices:
-
-            ct_slice = volume[:, :, i]
-
-            label_slice = None
-            slice_labels = set()
-
-            if label_volume is not None:
-                label_slice = label_volume[:, :, i]
-                slice_labels = get_slice_labels(label_slice)
-
-            draw_slice(
-                ax,
-                ct_slice,
-                label_slice,
-                aspect_ratio=aspect_ratio,
-                vmin=vmin,
-                vmax=vmax,
-                alpha=alpha
-            )
-
-            label_str = f"\n{sorted(slice_labels)}" if slice_labels else ""
-            ax.set_title(f"Slice {i}{label_str}", fontsize=8)
-
-        else:
-            ax.axis("off")
-
-    shape_str = f"Shape: {volume.shape}"
-
-    voxel_str = (
-        f"Voxel spacing: "
-        f"{voxel_spacing[0]:.3f} x "
-        f"{voxel_spacing[1]:.3f} x "
-        f"{voxel_spacing[2]:.3f} mm"
-    )
-
-    volume_label_str = f"Labels: {sorted(volume_labels)}" if volume_labels else ""
-
-    fig.suptitle(
-        f"{os.path.basename(file_path)}\n"
-        f"{shape_str}\n"
-        f"{voxel_str}\n"
-        f"{window_str}\n"
-        f"{volume_label_str}",
-        fontsize=11,
-        y=1.02
-    )
-
-    plt.tight_layout()
-    plt.show()
-
-# def show_all_slices(filename, window=None, overlay=False, alpha=0.4, cols=5, figsize_scale=3):
-#     # ... (giữ nguyên phần load data) ...
-#     file_path, volume, voxel_spacing = load_ct_volume(filename)
-#     label_volume = load_label_volume(filename) if overlay else None
 #     vmin, vmax, window_str = calculate_window_range(window)
+
+#     ct_slices = get_mid_slices(volume)
+
+#     aspects = calculate_aspect_ratios(voxel_spacing)
+
+#     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+#     for ax, view in zip(axes, ct_slices):
+
+#         label_slice = None
+#         slice_labels = set()
+
+#         if label_slices:
+#             label_slice = label_slices.get(view)
+#             slice_labels = get_slice_labels(label_slice)
+
+#         draw_slice(
+#             ax,
+#             ct_slices[view],
+#             label_slice,
+#             aspect_ratio=aspects[view],
+#             vmin=vmin,
+#             vmax=vmax,
+#             alpha=alpha
+#         )
+
+#         label_str = f"\n{sorted(slice_labels)}" if slice_labels else ""
+#         ax.set_title(f"{view}{label_str}")
+
+#     shape_str = f"Shape: {volume.shape}"
+
+#     voxel_str = (
+#         f"Voxel spacing: "
+#         f"{voxel_spacing[0]:.3f} x "
+#         f"{voxel_spacing[1]:.3f} x "
+#         f"{voxel_spacing[2]:.3f} mm"
+#     )
+
+#     volume_label_str = f"Labels: {sorted(volume_labels)}" if volume_labels else ""
+
+#     fig.suptitle(
+#         f"{os.path.basename(file_path)}\n"
+#         f"{shape_str}\n"
+#         f"{voxel_str}\n"
+#         f"{window_str}\n"
+#         f"{volume_label_str}",
+#         fontsize=11
+#     )
+
+#     plt.tight_layout()
+#     plt.subplots_adjust(top=0.83)
+#     plt.show()
+
+
+# def show_all_slices(
+#     filename,
+#     window=None,
+#     overlay=False,
+#     alpha=0.4,
+#     cols=5,
+#     figsize_scale=2.5
+# ):
+
+#     file_path, volume, voxel_spacing = load_ct_volume(filename)
+
+#     label_volume = load_label_volume(filename) if overlay else None
+
+#     volume_labels = set()
+#     if label_volume is not None:
+#         volume_labels = get_volume_labels(label_volume)
+
+#     vmin, vmax, window_str = calculate_window_range(window)
+
 #     n_slices = volume.shape[2]
+
 #     rows = int(np.ceil(n_slices / cols))
+
 #     aspect_ratio = voxel_spacing[1] / voxel_spacing[0]
 
-#     # TĂNG figsize và dùng gridspec_kw để giảm khoảng cách (wspace, hspace)
 #     fig, axes = plt.subplots(
-#         rows, cols, 
-#         figsize=(cols * figsize_scale, rows * figsize_scale),
-#         gridspec_kw={'wspace': 0.02, 'hspace': 0.02} # Khoảng cách cực nhỏ giữa các slice
+#         rows,
+#         cols,
+#         figsize=(cols * figsize_scale, rows * figsize_scale)
 #     )
-    
+
 #     axes = np.array(axes).reshape(-1)
 
 #     for i, ax in enumerate(axes):
-#         ax.axis("off") # Tắt trục ngay từ đầu cho tất cả các ô
-        
+
 #         if i < n_slices:
+
 #             ct_slice = volume[:, :, i]
-#             label_slice = label_volume[:, :, i] if label_volume is not None else None
-            
-#             draw_slice(ax, ct_slice, label_slice, aspect_ratio=aspect_ratio, 
-#                        vmin=vmin, vmax=vmax, alpha=alpha)
 
-#             # THAY THẾ set_title bằng ax.text để tiết kiệm không gian
-#             label_slice_info = get_slice_labels(label_slice) if label_volume is not None else []
-#             label_str = f"S:{i} {list(label_slice_info) if label_slice_info else ''}"
-            
-#             # Ghi chữ đè lên ảnh (góc trên bên trái)
-#             ax.text(0.05, 0.95, label_str, color='yellow', fontsize=9, 
-#                     transform=ax.transAxes, va='top', ha='left',
-#                     bbox=dict(facecolor='black', alpha=0.5, lw=0)) 
+#             label_slice = None
+#             slice_labels = set()
 
-#     # Cấu hình Suptitle để không đè lên ảnh
+#             if label_volume is not None:
+#                 label_slice = label_volume[:, :, i]
+#                 slice_labels = get_slice_labels(label_slice)
+
+#             draw_slice(
+#                 ax,
+#                 ct_slice,
+#                 label_slice,
+#                 aspect_ratio=aspect_ratio,
+#                 vmin=vmin,
+#                 vmax=vmax,
+#                 alpha=alpha
+#             )
+
+#             label_str = f"\n{sorted(slice_labels)}" if slice_labels else ""
+#             ax.set_title(f"Slice {i}{label_str}", fontsize=8)
+
+#         else:
+#             ax.axis("off")
+
 #     shape_str = f"Shape: {volume.shape}"
-#     voxel_str = f"Voxel: {voxel_spacing[0]:.2f}x{voxel_spacing[1]:.2f}x{voxel_spacing[2]:.2f}mm"
-    
-#     fig.suptitle(
-#         f"{os.path.basename(file_path)} | {shape_str} | {voxel_str} | {window_str}",
-#         fontsize=12, fontweight='bold', y=0.98 # Đẩy sát lên trên cùng
+
+#     voxel_str = (
+#         f"Voxel spacing: "
+#         f"{voxel_spacing[0]:.3f} x "
+#         f"{voxel_spacing[1]:.3f} x "
+#         f"{voxel_spacing[2]:.3f} mm"
 #     )
 
-#     # Căn lề thủ công để tận dụng tối đa không gian
-#     plt.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.92)
+#     volume_label_str = f"Labels: {sorted(volume_labels)}" if volume_labels else ""
+
+#     fig.suptitle(
+#         f"{os.path.basename(file_path)}\n"
+#         f"{shape_str}\n"
+#         f"{voxel_str}\n"
+#         f"{window_str}\n"
+#         f"{volume_label_str}",
+#         fontsize=11,
+#         y=1.02
+#     )
+
+#     plt.tight_layout()
 #     plt.show()
+
+def show_all_slices(filename, window=None, overlay=False, alpha=0.4, cols=5, figsize_scale=3):
+    # ... (giữ nguyên phần load data) ...
+    file_path, volume, voxel_spacing = load_ct_volume(filename)
+    label_volume = load_label_volume(filename) if overlay else None
+    vmin, vmax, window_str = calculate_window_range(window)
+    n_slices = volume.shape[2]
+    rows = int(np.ceil(n_slices / cols))
+    aspect_ratio = voxel_spacing[1] / voxel_spacing[0]
+
+    # TĂNG figsize và dùng gridspec_kw để giảm khoảng cách (wspace, hspace)
+    fig, axes = plt.subplots(
+        rows, cols, 
+        figsize=(cols * figsize_scale, rows * figsize_scale),
+        gridspec_kw={'wspace': 0.02, 'hspace': 0.02} # Khoảng cách cực nhỏ giữa các slice
+    )
+    
+    axes = np.array(axes).reshape(-1)
+
+    for i, ax in enumerate(axes):
+        ax.axis("off") # Tắt trục ngay từ đầu cho tất cả các ô
+        
+        if i < n_slices:
+            ct_slice = volume[:, :, i]
+            label_slice = label_volume[:, :, i] if label_volume is not None else None
+            
+            draw_slice(ax, ct_slice, label_slice, aspect_ratio=aspect_ratio, 
+                       vmin=vmin, vmax=vmax, alpha=alpha)
+
+            # THAY THẾ set_title bằng ax.text để tiết kiệm không gian
+            label_slice_info = get_slice_labels(label_slice) if label_volume is not None else []
+            label_str = f"#{i} {list(label_slice_info) if label_slice_info else ''}"
+            
+            # Ghi chữ đè lên ảnh (góc trên bên trái)
+            ax.text(0.05, 0.95, label_str, color='yellow', fontsize=9, 
+                    transform=ax.transAxes, va='top', ha='left',
+                    bbox=dict(facecolor='black', alpha=0.5, lw=0)) 
+
+    # Cấu hình Suptitle để không đè lên ảnh
+    shape_str = f"Shape: {volume.shape}"
+    voxel_str = f"Voxel: {voxel_spacing[0]:.2f}x{voxel_spacing[1]:.2f}x{voxel_spacing[2]:.2f}mm"
+    
+    volume_label_str = f"Labels: {sorted(get_volume_labels(label_volume))}" if label_volume is not None else ""
+
+    fig.suptitle(
+        f"{os.path.basename(file_path)} | {shape_str} | {voxel_str} | {window_str} | {volume_label_str}",
+        fontsize=12, fontweight='bold', y=0.98 # Đẩy sát lên trên cùng
+    )
+
+    # Căn lề thủ công để tận dụng tối đa không gian
+    plt.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.92)
+    plt.show()
 
 def get_slice_labels(label_slice):
     """
@@ -428,7 +430,7 @@ def get_volume_labels(label_volume):
 if __name__ == "__main__":
 
     show_all_slices(
-        "ID_02b882cc_ID_a4892e60ae.nii.gz",
+        "ID_0b10cbee_ID_f91d6a7cd2.nii.gz",
         window=(40, 80),
         overlay=True
     )

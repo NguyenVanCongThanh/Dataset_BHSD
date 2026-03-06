@@ -1,6 +1,7 @@
 import os
 
-DATASET_ROOT = "/mnt/d/BHSD"
+# DATASET_ROOT = "/mnt/d/BHSD"
+DATASET_ROOT = "/mnt/c/Users/Admin/Desktop/ICH_BHSD"
 
 LABEL_DIR = os.path.join(DATASET_ROOT, "label_192")
 UNLABEL_DIR = os.path.join(DATASET_ROOT, "unlabel_2000")
