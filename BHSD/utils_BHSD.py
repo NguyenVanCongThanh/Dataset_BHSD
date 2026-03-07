@@ -394,6 +394,77 @@ def show_all_slices(filename, window=None, overlay=False, alpha=0.4, cols=5, fig
     plt.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.92)
     plt.show()
 
+def show_mid_slices(
+    filename, 
+    window=None, 
+    overlay=False, 
+    alpha=0.4, 
+    base_dir=IMAGE_DIR,
+    figsize_scale=5
+):
+    # 1. Load data tương tự show_all_slices
+    file_path, volume, voxel_spacing = load_ct_volume(filename, base_dir)
+    label_volume = load_label_volume(filename) if overlay else None
+    
+    # 2. Chuẩn bị thông tin hiển thị
+    vmin, vmax, window_str = calculate_window_range(window)
+    ct_slices = get_mid_slices(volume)
+    label_slices = get_mid_slices(label_volume) if label_volume is not None else None
+    aspects = calculate_aspect_ratios(voxel_spacing)
+    
+    # 3. Khởi tạo Figure (3 cột cho 3 view: Axial, Sagittal, Coronal)
+    fig, axes = plt.subplots(
+        1, 3, 
+        figsize=(3 * figsize_scale, 1 * figsize_scale),
+        gridspec_kw={'wspace': 0.02, 'hspace': 0.02}
+    )
+
+    # 4. Duyệt qua từng view để vẽ
+    for ax, view in zip(axes, ct_slices):
+        ax.axis("off") # Tắt trục tọa độ
+        
+        ct_slice = ct_slices[view]
+        label_slice = label_slices.get(view) if label_slices else None
+        
+        # Vẽ slice (CT + Overlay nếu có)
+        draw_slice(
+            ax, 
+            ct_slice, 
+            label_slice, 
+            aspect_ratio=aspects[view], 
+            vmin=vmin, 
+            vmax=vmax, 
+            alpha=alpha
+        )
+
+        # 5. Overlay text lên ảnh thay vì set_title
+        slice_labels = get_slice_labels(label_slice) if label_slice is not None else set()
+        label_str = f"{view.upper()}\n{list(sorted(slice_labels)) if slice_labels else ''}"
+        
+        ax.text(
+            0.05, 0.95, label_str, 
+            color='yellow', fontsize=10, fontweight='bold',
+            transform=ax.transAxes, va='top', ha='left',
+            bbox=dict(facecolor='black', alpha=0.5, lw=0)
+        )
+
+    # 6. Cấu hình tiêu đề tổng quát (Suptitle)
+    shape_str = f"Shape: {volume.shape}"
+    voxel_str = f"Voxel: {voxel_spacing[0]:.2f}x{voxel_spacing[1]:.2f}x{voxel_spacing[2]:.2f}mm"
+    
+    volume_labels = get_volume_labels(label_volume) if label_volume is not None else []
+    volume_label_str = f"Labels: {sorted(volume_labels)}" if volume_labels else ""
+
+    fig.suptitle(
+        f"{os.path.basename(file_path)} | {shape_str} | {voxel_str} | {window_str} | {volume_label_str}",
+        fontsize=12, fontweight='bold', y=0.98
+    )
+
+    # Tối ưu không gian
+    plt.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.88)
+    plt.show()
+
+
 def get_slice_labels(label_slice):
     """
     Return set of label names present in a slice.
@@ -422,6 +493,30 @@ def get_volume_labels(label_volume):
     labels.discard(0)
 
     return {LABEL_MAP[l] for l in labels if l in LABEL_MAP}
+
+
+def calculate_mask_volume(label_volume, voxel_spacing):
+    """
+    Tính thể tích các vùng xuất huyết (nhãn > 0).
+    label_volume: numpy array (3D)
+    voxel_spacing: tuple/list (x_spacing, y_spacing, z_spacing) mm
+    """
+    if label_volume is None:
+        return 0.0
+    
+    # Tính thể tích của một voxel đơn lẻ (mm^3)
+    voxel_unit_volume = np.prod(voxel_spacing)
+    
+    # Đếm số lượng voxel có giá trị > 0 (tất cả các loại xuất huyết)
+    num_bleed_voxels = np.sum(label_volume > 0)
+    
+    # Tổng thể tích tính bằng mm^3
+    total_volume_mm3 = num_bleed_voxels * voxel_unit_volume
+    
+    # Chuyển đổi sang ml (1 ml = 1000 mm^3)
+    volume_ml = total_volume_mm3 / 1000.0
+    
+    return volume_ml
 
 # ==============================
 # EXAMPLE

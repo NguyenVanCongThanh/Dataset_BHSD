@@ -1,7 +1,7 @@
 import os
 
-# DATASET_ROOT = "/mnt/d/BHSD"
-DATASET_ROOT = "/mnt/c/Users/Admin/Desktop/ICH_BHSD"
+DATASET_ROOT = "/mnt/d/BHSD"
+# DATASET_ROOT = "/mnt/c/Users/Admin/Desktop/ICH_BHSD"
 
 LABEL_DIR = os.path.join(DATASET_ROOT, "label_192")
 UNLABEL_DIR = os.path.join(DATASET_ROOT, "unlabel_2000")
@@ -28,3 +28,5 @@ LABEL_MAP = {
     4: "SAH",
     5: "SDH",
 }
+
+HEADER_CSV = "/home/thanh/Dataset/BHSD/header/BHSD_headers.csv"
