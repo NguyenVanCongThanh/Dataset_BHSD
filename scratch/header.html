@@ -1,0 +1,680 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global CT Study Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Sidebar Styles */
+        .sidebar {
+            width: 320px;
+            background-color: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-header {
+            padding: 20px 20px 10px 20px;
+            background-color: #0f172a;
+        }
+        .study-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .study-item {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        .study-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 15px;
+            right: 15px;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.08), transparent);
+        }
+        .study-item:hover {
+            background-color: #334155;
+        }
+        .study-item.active {
+            background-color: #2563eb;
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .study-item-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #f8fafc;
+            word-break: break-all;
+            line-height: 1.4;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            transition: color 0.2s;
+        }
+        
+        .study-item-meta {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            display: flex;
+            gap: 10px;
+            transition: color 0.2s;
+        }
+        
+        .study-item-badge {
+            font-size: 0.7rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 1px 6px;
+            border-radius: 10px;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        /* Active State Overrides */
+        .study-item.active .study-item-title { color: #ffffff; }
+        .study-item.active .study-item-title i { color: #ffffff !important; }
+        .study-item.active .study-item-meta { color: rgba(255, 255, 255, 0.8); }
+        .study-item.active .study-item-meta i { opacity: 0.9 !important; color: #ffffff !important; }
+        .study-item.active .study-item-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
+        .study-item.active .study-item-badge i { color: #ffffff !important; }
+
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            padding: 16px 24px;
+            background-color: #1e293b;
+            box-shadow: 0 4px 10px rgb(0 0 0 / 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+        }
+        .viewer-container {
+            flex: 1;
+            display: flex;
+            padding: 24px;
+            gap: 20px;
+            overflow: hidden;
+        }
+        .image-section {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+            overflow: hidden;
+            cursor: grab;
+            border: 1px solid #334155;
+        }
+        .view-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #f8fafc;
+            font-size: 1.1rem;
+            font-weight: 700;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 4px 12px;
+            border-radius: 6px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+            letter-spacing: 0.02em;
+        }
+        .image-section:active {
+            cursor: grabbing;
+        }
+        #slice-img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            pointer-events: none;
+            user-select: none;
+            will-change: transform;
+        }
+        .info-section {
+            flex: 1;
+            background-color: #1e293b;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 500px;
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.3);
+        }
+        .label-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 4px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            margin: 0;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+        /* Custom Tooltip */
+        .label-badge::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease-out;
+            border: 1px solid #3b82f6;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+        }
+        .label-badge:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        /* Triangle for tooltip */
+        .label-badge::before {
+            content: '';
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            border: 6px solid transparent;
+            border-top-color: #3b82f6;
+            opacity: 0;
+            transition: all 0.2s ease-out;
+            z-index: 1000;
+        }
+        .label-badge:hover::before {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .label-true { background-color: #ef4444; color: white; }
+        .label-false { background-color: #334155; color: #94a3b8; }
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input[type=range] { 
+            width: 100%; 
+            cursor: pointer;
+            accent-color: #3b82f6;
+            height: 6px;
+            border-radius: 3px;
+            background: #334155;
+            outline: none;
+        }
+        .nav-btns { display: flex; gap: 10px; }
+        button {
+            flex: 1;
+            padding: 12px;
+            background-color: #3b82f6;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #2563eb; }
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px 16px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            background: #0f172a55;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #33415566;
+        }
+        .metadata-label { 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600; 
+            color: #64748b; 
+            font-size: 0.7rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            align-self: center; 
+        }
+        .metadata-label i { width: 14px; height: 14px; }
+        .metadata-value { color: #f8fafc; font-family: monospace; font-size: 0.9rem; word-break: break-all; }
+        .keyboard-hints-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 12px;
+            padding-top: 12px;
+            border-top: 1px solid #334155;
+            margin-top: auto;
+        }
+        .keyboard-hint-item {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hint-text { opacity: 0.7; }
+        kbd {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 2px 5px;
+            font-size: 0.7rem;
+            color: #f8fafc;
+            font-family: monospace;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+
+        /* Viewer Tools Styles */
+        .viewer-tools {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+        }
+        .tool-btn {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #475569;
+            color: #f8fafc;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .tool-btn i { width: 22px; height: 22px; }
+        .tool-btn:hover {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Search & Navigation Enhancements */
+        .search-container {
+            padding: 10px 20px 15px 20px;
+            background-color: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f8fafc;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .slice-counter-display {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 2px 8px;
+            width: fit-content;
+        }
+        .slice-total {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-left: 4px;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        .slice-nav-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .slice-nav-btn {
+            flex: 1;
+            background: #3b82f6;
+            border: none;
+            color: #ffffff;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 0;
+        }
+        .slice-nav-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2.5px;
+            display: block;
+        }
+        .slice-nav-btn:hover {
+            background: #2563eb;
+        }
+        .slice-nav-btn:active {
+            background: #1d4ed8;
+        }
+        .slice-input {
+            width: 36px;
+            background: transparent;
+            border: none;
+            color: #f8fafc;
+            padding: 0;
+            font-weight: 700;
+            text-align: center;
+            font-size: 0.95rem;
+            outline: none;
+            font-family: monospace;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        .slice-input::-webkit-outer-spin-button,
+        .slice-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .window-info {
+            font-size: 0.8rem;
+            background: #3b82f622;
+            color: #3b82f6;
+            padding: 2px 8px;
+            border-radius: 12px;
+            border: 1px solid #3b82f644;
+            display: inline-block;
+        }
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        /* Montage Preview Styles */
+        .montage-preview-container {
+            margin-top: 5px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            max-height: 320px;
+            overflow: hidden;
+        }
+        .montage-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .montage-preview-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .montage-preview-card {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            border: 1px solid #334155;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            height: 280px;
+            display: block; /* Change from flex to allow scrolling */
+        }
+        .montage-preview-card:hover {
+            border-color: #3b82f6;
+        }
+        .montage-preview-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .montage-preview-overlay {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 600;
+            gap: 4px;
+            padding: 6px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .montage-preview-card:hover .montage-preview-overlay {
+            opacity: 1;
+        }
+        .montage-preview-card::-webkit-scrollbar {
+            width: 4px;
+        }
+        .montage-preview-card::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .montage-active-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #3b82f6;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            z-index: 10;
+            pointer-events: none;
+            display: none;
+        }
+        .montage-mode .montage-active-badge {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2 style="margin:0; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="brain-circuit" style="color: #3b82f6; width: 24px; height: 24px;"></i>
+                CT Studies
+            </h2>
+            <p style="margin:5px 0 0 0; font-size: 0.75rem; opacity: 0.6;">Epidural Hemorrhage Dataset</p>
+        </div>
+        <div class="search-container" style="position: relative;">
+            <i data-lucide="search" style="position: absolute; left: 32px; top: 22px; width: 16px; height: 16px; opacity: 0.4;"></i>
+            <input type="text" id="study-search" class="search-input" placeholder="Search by filename or ID..." style="padding-left: 36px;">
+        </div>
+        <div class="study-list" id="study-list">
+            <!-- Study items will be injected here -->
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div id="study-header-info">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="file-text" style="color: #3b82f6; width: 24px; height: 24px;"></i>
+                    <h3 id="display-filename" style="margin:0; font-size: 1.4rem; color: #f8fafc; word-break: break-all;">Select a study</h3>
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px; margin-top: 8px; opacity: 0.9; font-size: 0.85rem; color: #94a3b8;">
+                    <span style="display: flex; align-items: center; gap: 6px;"><i data-lucide="user" style="width: 14px; height: 14px;"></i> P: <span id="display-patient-id" style="color: #f8fafc; font-weight: 600;">-</span></span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><i data-lucide="folder" style="width: 14px; height: 14px;"></i> S: <span id="display-study-id" style="color: #f8fafc; font-weight: 600;">-</span></span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><i data-lucide="hash" style="width: 14px; height: 14px;"></i> Ser: <span id="display-series-id" style="color: #f8fafc; font-weight: 600;">-</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="viewer-container">
+            <div class="image-section">
+                <div id="slice-title-overlay" class="view-overlay">Slice 1</div>
+                <img id="slice-img" src="" alt="Select a study to view">
+                
+                <div class="viewer-tools">
+                    <button class="tool-btn" onclick="adjustZoom(1.2)" title="Zoom In">
+                        <i data-lucide="zoom-in"></i>
+                    </button>
+                    <button class="tool-btn" onclick="adjustZoom(0.8)" title="Zoom Out">
+                        <i data-lucide="zoom-out"></i>
+                    </button>
+                    <button class="tool-btn" onclick="resetTransform()" title="Reset View">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <div class="metadata-grid">
+                    <div class="metadata-label"><i data-lucide="file-text"></i> File</div>
+                    <div id="filename-text" class="metadata-value">-</div>
+                    <div class="metadata-label"><i data-lucide="layers"></i> Windowing</div>
+                    <div id="window-text" class="metadata-value">Brain (80/40)</div>
+                </div>
+                
+                <div id="labels-container">
+                    <!-- Labels will be injected here -->
+                </div>
+                
+                <div class="control-panel">
+                    <div class="control-header">
+                        <label for="slice-slider" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Navigate Slices:</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="slice-counter-display">
+                                <input type="number" id="slice-jump-input" class="slice-input" min="1" value="1">
+                            </div>
+                            <span id="slice-total-text" class="slice-total">/ --</span>
+                        </div>
+                    </div>
+                    <input type="range" id="slice-slider" class="slice-slider" min="0" value="0" step="1">
+                    <div class="slice-nav-footer">
+                        <button class="slice-nav-btn" onclick="changeSlice(-1)" title="Previous Slice"><i data-lucide="chevron-left"></i> PREV</button>
+                        <button class="slice-nav-btn" onclick="changeSlice(1)" title="Next Slice">NEXT <i data-lucide="chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="montage-preview-container">
+                    <div class="montage-preview-card" onclick="toggleMontageMode()" id="montage-card" title="Click to swap view">
+                        <div class="montage-active-badge" id="montage-badge">Montage View</div>
+                        <img id="montage-preview-img" src="" alt="Montage Preview">
+                        <div class="montage-preview-overlay">
+                            <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                            SWAP VIEW
+                        </div>
+                    </div>
+                </div>
+
+                <div class="keyboard-hints-grid">
+                    <div style="grid-column: span 2; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #f8fafc; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <i data-lucide="keyboard" style="width: 14px; height: 14px; color: #3b82f6;"></i>
+                        Shortcuts
+                    </div>
+                    <div class="keyboard-hint-item">
+                        <span><kbd>←</kbd> <kbd>→</kbd> / <kbd>Scroll</kbd></span>
+                        <span class="hint-text">Flip Slices</span>
+                    </div>
+                    <div class="keyboard-hint-item">
+                        <span><kbd>Ctrl</kbd> + <kbd>Scroll</kbd></span>
+                        <span class="hint-text">Zoom View</span>
+                    </div>
+                    <div class="keyboard-hint-item">
+                        <span><kbd>Drag</kbd></span>
+                        <span class="hint-text">Pan View</span>
+                    </div>
+                    <div class="keyboard-hint-item">
+                        <span><kbd>PgUp</kbd> <kbd>PgDn</kbd></span>
+                        <span class="hint-text">Studies</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>

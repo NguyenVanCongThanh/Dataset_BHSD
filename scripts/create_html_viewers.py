@@ -131,7 +131,7 @@ def generate_html_viewer(study_id, patient_id, slices_data, output_path):
         
         <div class="info-section">
             <div>
-                <h3 id="slice-title">Slice 0</h3>
+                <h3 id="slice-title">Slice 1</h3>
                 <p id="filename-text" style="font-family: monospace; font-size: 0.9rem; color: #94a3b8;"></p>
             </div>
             
@@ -172,7 +172,7 @@ def generate_html_viewer(study_id, patient_id, slices_data, output_path):
             
             imgElement.src = slice.img;
             slider.value = currentIndex;
-            titleText.innerText = `Slice ${{currentIndex}} / ${{slices.length - 1}}`;
+            titleText.innerText = `Slice ${{currentIndex + 1}} / ${{slices.length}}`;
             filenameText.innerText = slice.filename;
             
             // Update labels
@@ -258,7 +258,7 @@ def create_interactive_viewers():
         slices_json = []
         
         for i in range(data.shape[2]):
-            slice_filename = f"slice_{i}.png"
+            slice_filename = f"slice_{i+1}.png"
             slice_path = os.path.join(slices_dir, slice_filename)
             
             # Save individual slice if not already exists (or overwrite)

@@ -45,8 +45,8 @@ def sort_slices_by_z():
         # We sort by Z ascending.
         study_meta = study_meta.sort_values('Z_pos')
         
-        # 3. Add SliceNumber (0-indexed)
-        study_meta['SliceNumber'] = range(len(study_meta))
+        # 3. Add SliceNumber (1-indexed)
+        study_meta['SliceNumber'] = range(1, len(study_meta) + 1)
         
         # 4. Join with labels
         study_meta['ImageID'] = study_meta['FileName'].str.replace('.dcm', '', regex=False)

@@ -1,0 +1,401 @@
+        let currentStudyId = null;
+        let currentIndex = 0;
+        let isMontageMode = false;
+        
+        // Zoom & Pan State
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isPanning = false;
+        let startX, startY;
+
+        const imgElement = document.getElementById('slice-img');
+        const imageSection = document.querySelector('.image-section');
+        const montagePreviewImg = document.getElementById('montage-preview-img');
+        const montageCard = document.getElementById('montage-card');
+        let preloadQueue = [];
+        let preloadingActive = false;
+        let lastPreloadIndex = 0;
+        const preloadedImages = {}; // Map of studyId -> Map of sliceIndex -> Image object
+
+        const studyList = document.getElementById('study-list');
+        const slider = document.getElementById('slice-slider');
+        const sliceJumpInput = document.getElementById('slice-jump-input');
+        const sliceTotalText = document.getElementById('slice-total-text');
+        const titleText = document.getElementById('slice-title');
+        const filenameText = document.getElementById('filename-text');
+        const windowText = document.getElementById('window-text');
+        const labelsContainer = document.getElementById('labels-container');
+        const displayFilename = document.getElementById('display-filename');
+        const displayPatientId = document.getElementById('display-patient-id');
+        const displayStudyId = document.getElementById('display-study-id');
+        const displaySeriesId = document.getElementById('display-series-id');
+
+        // Populate Sidebar
+        Object.keys(studies).forEach(id => {
+            const div = document.createElement('div');
+            div.className = 'study-item';
+            div.id = 'item-' + id;
+            const fileName = `${studies[id].patient_id}_${id}.nii.gz`;
+            div.innerHTML = `
+                <div class="study-item-title">
+                    <i data-lucide="file-text" style="width: 14px; height: 14px; margin-top: 2px; color: #3b82f6; flex-shrink: 0;"></i>
+                    ${fileName}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="study-item-meta">
+                        <span style="display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="user" style="width: 10px; height: 10px; opacity: 0.5;"></i>
+                            P: ${studies[id].patient_id.slice(-8)}
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="folder" style="width: 10px; height: 10px; opacity: 0.5;"></i>
+                            S: ${id.slice(-8)}
+                        </span>
+                    </div>
+                    <div class="study-item-badge">
+                        <i data-lucide="layers" style="width: 10px; height: 10px;"></i>
+                        ${studies[id].slices.length} slices
+                    </div>
+                </div>
+            `;
+            div.onclick = () => selectStudy(id);
+            studyList.appendChild(div);
+        });
+        lucide.createIcons();
+
+        function selectStudy(id) {
+            if (currentStudyId) {
+                document.getElementById('item-' + currentStudyId).classList.remove('active');
+            }
+            currentStudyId = id;
+            document.getElementById('item-' + currentStudyId).classList.add('active');
+            document.getElementById('item-' + currentStudyId).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            displayFilename.innerText = `${studies[id].patient_id}_${id}.nii.gz`;
+            displayPatientId.innerText = studies[id].patient_id;
+            displayStudyId.innerText = id;
+            displaySeriesId.innerText = studies[id].series_id;
+            
+
+            
+            // Reset montage mode when changing studies for clarity
+            isMontageMode = false;
+            document.body.classList.remove('montage-mode');
+            montageCard.classList.remove('active');
+            
+            slider.max = studies[id].slices.length - 1;
+            
+            updateViewer(0);
+            preloadStudy(id);
+        }
+
+        function preloadStudy(studyId, startIndex = 0) {
+            // Re-calculate queue starting from current index
+            preloadQueue = [];
+            lastPreloadIndex = startIndex;
+            
+            if (!preloadedImages[studyId]) {
+                preloadedImages[studyId] = {};
+            }
+
+            const slices = studies[studyId].slices;
+            const total = slices.length;
+            
+            // Prioritize: Next 5, Prev 5, then rest
+            let indices = [];
+            // Next 10
+            for (let i = 1; i <= 10; i++) {
+                let idx = startIndex + i;
+                if (idx < total) indices.push(idx);
+            }
+            // Prev 5
+            for (let i = 1; i <= 5; i++) {
+                let idx = startIndex - i;
+                if (idx >= 0) indices.push(idx);
+            }
+            // Rest of the slices
+            for (let i = 0; i < total; i++) {
+                if (!indices.includes(i) && i !== startIndex) indices.push(i);
+            }
+
+            // Filter out already preloaded
+            preloadQueue = indices.filter(idx => !preloadedImages[studyId][idx]);
+
+            // Start preloading if not already processing
+            if (!preloadingActive) {
+                processPreloadQueue(studyId);
+            }
+        }
+
+        function processPreloadQueue(studyId) {
+            if (preloadQueue.length === 0 || currentStudyId !== studyId) {
+                preloadingActive = false;
+                return;
+            }
+
+            preloadingActive = true;
+            const index = preloadQueue.shift();
+            const img = new Image();
+            img.onload = () => {
+                preloadedImages[studyId][index] = img;
+                processPreloadQueue(studyId);
+            };
+            img.onerror = () => {
+                processPreloadQueue(studyId);
+            };
+            img.src = studies[studyId].slices[index].img;
+        }
+
+        function updateViewer(index) {
+            if (!currentStudyId) return;
+            const total = studies[currentStudyId].slices.length;
+            if (index < 0 || index >= total) return;
+            
+            currentIndex = index;
+            const slice = studies[currentStudyId].slices[currentIndex];
+            
+            // Show loading state if image not in cache
+            if (!preloadedImages[currentStudyId] || !preloadedImages[currentStudyId][currentIndex]) {
+                imgElement.style.opacity = '0.7';
+            } else {
+                imgElement.style.opacity = '1';
+            }
+
+            const sliceImgSrc = slice.img;
+            const montageImgSrc = `${currentStudyId}/${currentStudyId}_montage.png`;
+
+            if (isMontageMode) {
+                imgElement.src = montageImgSrc;
+                montagePreviewImg.src = sliceImgSrc;
+            } else {
+                imgElement.src = sliceImgSrc;
+                montagePreviewImg.src = montageImgSrc;
+            }
+            
+            imgElement.onload = () => {
+                imgElement.style.opacity = '1';
+                // Re-prioritize preloading if we moved more than 5 slices away from last preload start
+                if (!lastPreloadIndex || Math.abs(currentIndex - lastPreloadIndex) > 5) {
+                    preloadStudy(currentStudyId, currentIndex);
+                }
+            };
+
+            slider.value = currentIndex;
+            
+            // Update slice jump input and total
+            if (sliceJumpInput) sliceJumpInput.value = currentIndex + 1;
+            if (sliceTotalText) sliceTotalText.innerText = `/ ${studies[currentStudyId].slices.length}`;
+            
+            const titleTextOverlay = document.getElementById('slice-title-overlay');
+            if (titleTextOverlay) {
+                titleTextOverlay.style.display = isMontageMode ? 'none' : 'block';
+                titleTextOverlay.innerText = `Slice ${currentIndex + 1}`;
+            }
+            filenameText.innerText = slice.filename;
+            
+            // Set window info (defaulting to Brain for this dataset)
+            windowText.innerText = slice.window || "Brain (W:80, L:40)";
+            
+            // Re-render labels container with better layout
+            labelsContainer.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <i data-lucide="activity" style="width: 14px; height: 14px; color: #3b82f6;"></i>
+                    <h4 style="margin: 0; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Classification:</h4>
+                </div>
+                <div id="badges-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;"></div>
+            `;
+            const badgesGrid = document.getElementById('badges-grid');
+            const allSubtypes = ['epidural', 'intraparenchymal', 'intraventricular', 'subarachnoid', 'subdural'];
+            const abbr = {
+                'epidural': 'EDH',
+                'intraparenchymal': 'IPH',
+                'intraventricular': 'IVH',
+                'subarachnoid': 'SAH',
+                'subdural': 'SDH'
+            };
+            
+            allSubtypes.forEach((s, idx) => {
+                const isTrue = slice.labels[s] === 1;
+                const badge = document.createElement('span');
+                badge.className = `label-badge ${isTrue ? 'label-true' : 'label-false'}`;
+                badge.dataset.tooltip = s.charAt(0).toUpperCase() + s.slice(1);
+                badge.innerHTML = `
+                    <span style="opacity: 0.5; font-size: 0.8rem; margin-right: 2px; font-weight: 700;">${idx + 1}</span>
+                    <i data-lucide="${isTrue ? 'alert-triangle' : 'circle-check'}" style="width: 11px; height: 11px; margin-right: 2px;"></i>
+                    <span style="font-size: 0.75rem; letter-spacing: -0.02em;">${abbr[s]}</span>
+                `;
+                badgesGrid.appendChild(badge);
+            });
+            lucide.createIcons();
+        }
+
+        function toggleMontageMode() {
+            if (!currentStudyId) return;
+            
+            isMontageMode = !isMontageMode;
+            
+            if (isMontageMode) {
+                document.body.classList.add('montage-mode');
+                montageCard.classList.add('active');
+            } else {
+                document.body.classList.remove('montage-mode');
+                montageCard.classList.remove('active');
+            }
+            
+            updateViewer(currentIndex);
+        }
+
+        function changeSlice(delta) {
+            if (!currentStudyId) return;
+            let newIndex = currentIndex + delta;
+            if (newIndex >= 0 && newIndex < studies[currentStudyId].slices.length) {
+                updateViewer(newIndex);
+            }
+        }
+
+        function changeStudy(delta) {
+            const keys = Object.keys(studies);
+            let idx = keys.indexOf(currentStudyId);
+            let newIdx = idx + delta;
+            if (newIdx >= 0 && newIdx < keys.length) {
+                selectStudy(keys[newIdx]);
+            }
+        }
+
+        let isSliding = false;
+        slider.oninput = function() {
+            if (isSliding) return;
+            isSliding = true;
+            requestAnimationFrame(() => {
+                updateViewer(parseInt(this.value));
+                isSliding = false;
+            });
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlice(1);
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlice(-1);
+            if (e.key === 'PageDown') changeStudy(1);
+            if (e.key === 'PageUp') changeStudy(-1);
+        });
+
+        // Search functionality
+        document.getElementById('study-search').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.study-item');
+            items.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(query) ? 'block' : 'none';
+            });
+        });
+
+        // Slice jump functionality
+        sliceJumpInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = parseInt(e.target.value);
+                const total = studies[currentStudyId].slices.length;
+                if (!isNaN(val) && val >= 1 && val <= total) {
+                    updateViewer(val - 1);
+                } else {
+                    e.target.value = currentIndex + 1;
+                }
+                e.target.blur();
+            }
+        });
+
+        function updateTransform() {
+            imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        }
+
+        imageSection.addEventListener('mousedown', (e) => {
+            if (e.button !== 0 || e.target.closest('.viewer-tools')) return; // Only left click, ignore toolbar
+            isPanning = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            imageSection.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+            imageSection.style.cursor = 'grab';
+        });
+
+        imageSection.addEventListener('dblclick', (e) => {
+            if (e.target.closest('.viewer-tools')) return; // Ignore toolbar clicks
+            resetTransform();
+        });
+
+        function adjustZoom(delta) {
+            const newScale = scale * delta;
+            if (newScale >= 0.5 && newScale <= 10) {
+                scale = newScale;
+                updateTransform();
+            }
+        }
+
+        function resetTransform() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            updateTransform();
+        }
+
+        let isScrolling = false;
+        let isZooming = false;
+        window.addEventListener('wheel', (e) => {
+            if (e.target.closest('.study-list') || e.target.closest('.montage-preview-container') || isMontageMode) return;
+            
+            // Zoom with Ctrl + Wheel
+            if (e.ctrlKey) {
+                e.preventDefault();
+                if (isZooming) return;
+                
+                isZooming = true;
+                requestAnimationFrame(() => {
+                    const delta = e.deltaY > 0 ? 0.92 : 1.08; // Slightly slower for better control
+                    const newScale = scale * delta;
+                    
+                    if (newScale >= 0.5 && newScale <= 15) {
+                        const rect = imageSection.getBoundingClientRect();
+                        const mouseX = e.clientX - rect.left;
+                        const mouseY = e.clientY - rect.top;
+                        
+                        translateX -= (mouseX - rect.width/2 - translateX) * (delta - 1);
+                        translateY -= (mouseY - rect.height/2 - translateY) * (delta - 1);
+                        
+                        scale = newScale;
+                        updateTransform();
+                    }
+                    isZooming = false;
+                });
+                return;
+            }
+
+            if (isScrolling) return;
+            isScrolling = true;
+            requestAnimationFrame(() => {
+                if (e.deltaY > 0) changeSlice(1);
+                else changeSlice(-1);
+                setTimeout(() => { isScrolling = false; }, 50);
+            });
+        }, { passive: false }); // Changed to false to allow e.preventDefault() for zoom
+
+        // Initialize with first study
+        const firstStudy = Object.keys(studies)[0];
+        if (firstStudy) selectStudy(firstStudy);
+        
+        // Final icon check
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+    
