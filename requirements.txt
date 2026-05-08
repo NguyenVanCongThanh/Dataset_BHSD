@@ -19,3 +19,5 @@ ipykernel>=6.29
 
 # YAML support (for ct_ich.yml)
 pyyaml>=6.0
+datasets
+fsspec
