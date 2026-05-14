@@ -9,6 +9,8 @@ DATASET_DIR_BHSD = "/mnt/d/BHSD"
 LABEL_FOLDER_BHSD = "label_192"
 UNLABELED_FOLDER_BHSD = "unlabel_2000"
 
+DATASET_DIR_EXCLUDE_BHSD = "/mnt/d/all_EDH_studies_Exclude_BHSD"
+
 
 LABEL_COLORS_BHSD = {
     1: (1, 0, 0),      # red
