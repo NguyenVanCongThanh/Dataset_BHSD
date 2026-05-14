@@ -12,6 +12,12 @@ def generate_global_viewer():
 
     os.makedirs(os.path.join(base_dir, "data", "studies"), exist_ok=True)
 
+    # Load external studies tracking if exists
+    external_studies = []
+    if os.path.exists("added_external_studies.csv"):
+        ext_df = pd.read_csv("added_external_studies.csv")
+        external_studies = ext_df['StudyID'].tolist()
+
     studies_list = {}
     
     for study_id in tqdm(study_ids):
@@ -50,9 +56,11 @@ def generate_global_viewer():
             json.dump(study_data, f)
             
         # Add to summary list
+        is_bhsd = study_id not in external_studies
         studies_list[study_id] = {
             'patient_id': patient_id,
-            'slice_count': len(slices_data)
+            'slice_count': len(slices_data),
+            'is_bhsd': is_bhsd
         }
 
     # Save the main list
@@ -69,8 +77,6 @@ def generate_global_viewer():
         with open(footer_path, 'r') as f:
             footer = f.read()
         
-        # No more JSON injection, just combine header and footer
-        # The footer will now handle fetching data.json
         full_html = header + footer
         
         with open(output_html, 'w', encoding='utf-8') as f:
@@ -78,8 +84,7 @@ def generate_global_viewer():
         print(f"Global viewer regenerated. Data saved to study_visualizations/data/")
 
     else:
-        print("Error: Premium template parts not found. Using fallback.")
-        # ... (fallback code if needed, but we should have the parts)
+        print("Error: Premium template parts not found.")
 
 if __name__ == "__main__":
     generate_global_viewer()

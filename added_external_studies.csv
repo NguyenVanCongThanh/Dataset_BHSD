@@ -1,0 +1,11 @@
+PatientID,StudyID,FileName,SliceCount,IsBHSD
+ID_00307f7a,ID_cba1ebce2b,ID_00307f7a_ID_cba1ebce2b.nii.gz,28,False
+ID_01cfbe78,ID_1428709382,ID_01cfbe78_ID_1428709382.nii.gz,32,False
+ID_02e7feba,ID_3cfc05a279,ID_02e7feba_ID_3cfc05a279.nii.gz,40,False
+ID_04332a9c,ID_3072f20d43,ID_04332a9c_ID_3072f20d43.nii.gz,32,False
+ID_0635d3a6,ID_3ae5ff592a,ID_0635d3a6_ID_3ae5ff592a.nii.gz,34,False
+ID_0762da12,ID_a07d150d9f,ID_0762da12_ID_a07d150d9f.nii.gz,40,False
+ID_081eb8a0,ID_a3ee8457bb,ID_081eb8a0_ID_a3ee8457bb.nii.gz,28,False
+ID_084d3b15,ID_310826a506,ID_084d3b15_ID_310826a506.nii.gz,32,False
+ID_08ef021d,ID_50c1d1b569,ID_08ef021d_ID_50c1d1b569.nii.gz,36,False
+ID_09098359,ID_d6c8cff6b6,ID_09098359_ID_d6c8cff6b6.nii.gz,52,False

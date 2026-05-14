@@ -739,8 +739,9 @@
                     <div class="study-item-title">
                         <i data-lucide="file-text" style="width: 14px; height: 14px; margin-top: 2px; color: #3b82f6; flex-shrink: 0;"></i>
                         <span style="flex: 1;">${fileName}</span>
-                        <span class="study-item-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.65rem;">BHSD</span>
+                        ${studies[id].is_bhsd ? '<span class="study-item-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.65rem;">BHSD</span>' : ''}
                     </div>
+
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div class="study-item-meta">
                             <span style="display: flex; align-items: center; gap: 4px;">
