@@ -1,3 +1,5 @@
+        let studies = {}; // Summary list
+        let studyDetails = {}; // Cache for full study data (slices)
         let currentStudyId = null;
         let currentIndex = 0;
         let isMontageMode = false;
@@ -22,7 +24,6 @@
         const slider = document.getElementById('slice-slider');
         const sliceJumpInput = document.getElementById('slice-jump-input');
         const sliceTotalText = document.getElementById('slice-total-text');
-        const titleText = document.getElementById('slice-title');
         const filenameText = document.getElementById('filename-text');
         const windowText = document.getElementById('window-text');
         const labelsContainer = document.getElementById('labels-container');
@@ -31,60 +32,93 @@
         const displayStudyId = document.getElementById('display-study-id');
         const displaySeriesId = document.getElementById('display-series-id');
 
-        // Populate Sidebar
-        Object.keys(studies).forEach(id => {
-            const div = document.createElement('div');
-            div.className = 'study-item';
-            div.id = 'item-' + id;
-            const fileName = `${studies[id].patient_id}_${id}.nii.gz`;
-            div.innerHTML = `
-                <div class="study-item-title">
-                    <i data-lucide="file-text" style="width: 14px; height: 14px; margin-top: 2px; color: #3b82f6; flex-shrink: 0;"></i>
-                    ${fileName}
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div class="study-item-meta">
-                        <span style="display: flex; align-items: center; gap: 4px;">
-                            <i data-lucide="user" style="width: 10px; height: 10px; opacity: 0.5;"></i>
-                            P: ${studies[id].patient_id.slice(-8)}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: 4px;">
-                            <i data-lucide="folder" style="width: 10px; height: 10px; opacity: 0.5;"></i>
-                            S: ${id.slice(-8)}
-                        </span>
-                    </div>
-                    <div class="study-item-badge">
-                        <i data-lucide="layers" style="width: 10px; height: 10px;"></i>
-                        ${studies[id].slices.length} slices
-                    </div>
-                </div>
-            `;
-            div.onclick = () => selectStudy(id);
-            studyList.appendChild(div);
-        });
-        lucide.createIcons();
+        // Fetch Studies List
+        async function initViewer() {
+            try {
+                const response = await fetch('data/studies_list.json');
+                studies = await response.json();
+                populateSidebar();
+                
+                // Initialize with first study
+                const firstStudy = Object.keys(studies)[0];
+                if (firstStudy) selectStudy(firstStudy);
+            } catch (err) {
+                console.error('Failed to load studies list:', err);
+            }
+        }
 
-        function selectStudy(id) {
+        // Populate Sidebar
+        function populateSidebar() {
+            studyList.innerHTML = '';
+            Object.keys(studies).forEach(id => {
+                const div = document.createElement('div');
+                div.className = 'study-item';
+                div.id = 'item-' + id;
+                const fileName = `${studies[id].patient_id}_${id}.nii.gz`;
+                div.innerHTML = `
+                    <div class="study-item-title">
+                        <i data-lucide="file-text" style="width: 14px; height: 14px; margin-top: 2px; color: #3b82f6; flex-shrink: 0;"></i>
+                        <span style="flex: 1;">${fileName}</span>
+                        <span class="study-item-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 800; font-size: 0.65rem;">BHSD</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="study-item-meta">
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i data-lucide="user" style="width: 10px; height: 10px; opacity: 0.5;"></i>
+                                P: ${studies[id].patient_id.slice(-8)}
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i data-lucide="folder" style="width: 10px; height: 10px; opacity: 0.5;"></i>
+                                S: ${id.slice(-8)}
+                            </span>
+                        </div>
+                        <div class="study-item-badge">
+                            <i data-lucide="layers" style="width: 10px; height: 10px;"></i>
+                            ${studies[id].slice_count} slices
+                        </div>
+                    </div>
+                `;
+                div.onclick = () => selectStudy(id);
+                studyList.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        async function selectStudy(id) {
             if (currentStudyId) {
-                document.getElementById('item-' + currentStudyId).classList.remove('active');
+                const prevItem = document.getElementById('item-' + currentStudyId);
+                if (prevItem) prevItem.classList.remove('active');
             }
             currentStudyId = id;
-            document.getElementById('item-' + currentStudyId).classList.add('active');
-            document.getElementById('item-' + currentStudyId).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const currentItem = document.getElementById('item-' + currentStudyId);
+            if (currentItem) {
+                currentItem.classList.add('active');
+                currentItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
             
-            displayFilename.innerText = `${studies[id].patient_id}_${id}.nii.gz`;
-            displayPatientId.innerText = studies[id].patient_id;
-            displayStudyId.innerText = id;
-            displaySeriesId.innerText = studies[id].series_id;
-            
+            // Fetch study details if not cached
+            if (!studyDetails[id]) {
+                try {
+                    const response = await fetch(`data/studies/${id}.json`);
+                    studyDetails[id] = await response.json();
+                } catch (err) {
+                    console.error(`Failed to load details for study ${id}:`, err);
+                    return;
+                }
+            }
 
+            const data = studyDetails[id];
+            displayFilename.innerText = `${data.patient_id}_${id}.nii.gz`;
+            displayPatientId.innerText = data.patient_id;
+            displayStudyId.innerText = id;
+            displaySeriesId.innerText = data.series_id;
             
             // Reset montage mode when changing studies for clarity
             isMontageMode = false;
             document.body.classList.remove('montage-mode');
             montageCard.classList.remove('active');
             
-            slider.max = studies[id].slices.length - 1;
+            slider.max = data.slices.length - 1;
             
             updateViewer(0);
             preloadStudy(id);
@@ -99,7 +133,8 @@
                 preloadedImages[studyId] = {};
             }
 
-            const slices = studies[studyId].slices;
+            if (!studyDetails[studyId]) return;
+            const slices = studyDetails[studyId].slices;
             const total = slices.length;
             
             // Prioritize: Next 5, Prev 5, then rest
@@ -129,7 +164,7 @@
         }
 
         function processPreloadQueue(studyId) {
-            if (preloadQueue.length === 0 || currentStudyId !== studyId) {
+            if (preloadQueue.length === 0 || currentStudyId !== studyId || !studyDetails[studyId]) {
                 preloadingActive = false;
                 return;
             }
@@ -144,16 +179,16 @@
             img.onerror = () => {
                 processPreloadQueue(studyId);
             };
-            img.src = studies[studyId].slices[index].img;
+            img.src = studyDetails[studyId].slices[index].img;
         }
 
         function updateViewer(index) {
-            if (!currentStudyId) return;
-            const total = studies[currentStudyId].slices.length;
+            if (!currentStudyId || !studyDetails[currentStudyId]) return;
+            const total = studyDetails[currentStudyId].slices.length;
             if (index < 0 || index >= total) return;
             
             currentIndex = index;
-            const slice = studies[currentStudyId].slices[currentIndex];
+            const slice = studyDetails[currentStudyId].slices[currentIndex];
             
             // Show loading state if image not in cache
             if (!preloadedImages[currentStudyId] || !preloadedImages[currentStudyId][currentIndex]) {
@@ -185,7 +220,7 @@
             
             // Update slice jump input and total
             if (sliceJumpInput) sliceJumpInput.value = currentIndex + 1;
-            if (sliceTotalText) sliceTotalText.innerText = `/ ${studies[currentStudyId].slices.length}`;
+            if (sliceTotalText) sliceTotalText.innerText = `/ ${studyDetails[currentStudyId].slices.length}`;
             
             const titleTextOverlay = document.getElementById('slice-title-overlay');
             if (titleTextOverlay) {
@@ -247,9 +282,9 @@
         }
 
         function changeSlice(delta) {
-            if (!currentStudyId) return;
+            if (!currentStudyId || !studyDetails[currentStudyId]) return;
             let newIndex = currentIndex + delta;
-            if (newIndex >= 0 && newIndex < studies[currentStudyId].slices.length) {
+            if (newIndex >= 0 && newIndex < studyDetails[currentStudyId].slices.length) {
                 updateViewer(newIndex);
             }
         }
@@ -295,7 +330,7 @@
         sliceJumpInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 const val = parseInt(e.target.value);
-                const total = studies[currentStudyId].slices.length;
+                const total = studyDetails[currentStudyId].slices.length;
                 if (!isNaN(val) && val >= 1 && val <= total) {
                     updateViewer(val - 1);
                 } else {
@@ -389,9 +424,8 @@
             });
         }, { passive: false }); // Changed to false to allow e.preventDefault() for zoom
 
-        // Initialize with first study
-        const firstStudy = Object.keys(studies)[0];
-        if (firstStudy) selectStudy(firstStudy);
+        // Initialize
+        initViewer();
         
         // Final icon check
         lucide.createIcons();
