@@ -74,18 +74,28 @@ def process_studies(source_dir, limit=None):
         study_meta['SliceID'] = study_meta['FileName'].str.replace(".dcm", "", regex=False)
         study_data = study_meta.merge(labels_pivot, on='SliceID', how='left').fillna(0)
         
-        # Load NII and force LAS orientation
+        # Load NII and force PLS orientation (Synchronized with Face-Down PNGs)
         nii_path = os.path.join(source_dir, filename)
         try:
             nii_img = nib.load(nii_path)
-            orig_ornt = nib.orientations.axcodes2ornt(nib.orientations.aff2axcodes(nii_img.affine))
-            targ_ornt = nib.orientations.axcodes2ornt(('L', 'A', 'S'))
-            transform = nib.orientations.ornt_transform(orig_ornt, targ_ornt)
-            nii_las = nii_img.as_reoriented(transform)
+            orig_axcodes = nib.orientations.aff2axcodes(nii_img.affine)
+            targ_axcodes = ('P', 'L', 'S')
             
-            # Save LAS volume (standardize source data)
-            nib.save(nii_las, nii_path)
-            img_vol = nii_las.get_fdata()
+            if orig_axcodes != targ_axcodes:
+                orig_ornt = nib.orientations.axcodes2ornt(orig_axcodes)
+                targ_ornt = nib.orientations.axcodes2ornt(targ_axcodes)
+                transform = nib.orientations.ornt_transform(orig_ornt, targ_ornt)
+                nii_synced = nii_img.as_reoriented(transform)
+            else:
+                nii_synced = nii_img
+
+            # Enforce Header Consistency (Match BHSD standard)
+            nii_synced.header.set_qform(nii_synced.affine, code=1)
+            nii_synced.header.set_sform(nii_synced.affine, code=1)
+            
+            # Save synchronized volume
+            nib.save(nii_synced, nii_path)
+            img_vol = nii_synced.get_fdata()
             
         except Exception as e:
             print(f"Error loading {filename}: {e}")
@@ -109,9 +119,8 @@ def process_studies(source_dir, limit=None):
             hu_slice = slice_img * rescale_slope + rescale_intercept
             windowed = apply_window(hu_slice, 40, 80)
             
-            # Apply 180 degree rotation from previous Face-Up orientation
-            # Previous was np.flipud(windowed.T). 180 rotation makes it np.fliplr(windowed.T).
-            fixed_orientation = np.fliplr(windowed.T)
+            # With PLS orientation, the data is already aligned for Face-Down Neurological view
+            fixed_orientation = windowed
             
             png_path = os.path.join(slices_dir, f"slice_{i+1}.png")
             Image.fromarray(fixed_orientation).save(png_path)
@@ -150,8 +159,8 @@ def process_studies(source_dir, limit=None):
                 slice_img = img_vol[:, :, i]
                 hu_slice = slice_img * rescale_slope + rescale_intercept
                 windowed = apply_window(hu_slice, 40, 80)
-                # Use same orientation logic as slices (180 rotation)
-                fixed_orientation = np.fliplr(windowed.T)
+                # Use same orientation logic as slices
+                fixed_orientation = windowed
                 ax.imshow(fixed_orientation, cmap='gray')
                 
                 row_data = study_csv_df.iloc[i]
